@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Siri Farup</title>
+<style>
+
+/* ─── RESET ─── */
+* { margin: 0; padding: 0; box-sizing: border-box; cursor: none !important; }
+
+body {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+  cursor: none;
+  background: #f0ede8;
+}
+
+/* ─── CURSOR ─── */
+#cur {
+  position: fixed;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 9999;
+  width: 28px;
+  height: 36px;
+  display: block;
+}
+#cur svg { width: 100%; height: 100%; display: block; }
+
+#about-btn {
+  position: fixed;
+  top: 10px;
+  left: 11px;
+  z-index: 1100;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  color: #fff;
+  background: #111;
+  border: none;
+  padding: 6px 12px;
+  cursor: none !important;
+}
+
+
+#hero-wrap {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.5s ease;
+}
+#hero-wrap.open {
+  max-height: 100vh;
+}
+#hero {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: start;
+  background: #f0ede8;
+}
+.hero-col {
+  padding: 10px 11px 13px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.hero-col::-webkit-scrollbar { display: none; }
+
+#hero-photo img { width: 100%; height: auto; display: block; }
+
+.hero-body { font-size: clamp(6.25px, 1.3vw, 12.5px); line-height: 1.6; color: #111; }
+.hero-col.large { display: flex; flex-direction: column; }
+.hero-col.large .hero-body { font-size: clamp(9px, 1.8vw, 18px); }
+.hero-body + .hero-body { margin-top: 1em; }
+
+.hero-link {
+  color: #111; text-decoration: none;
+  border-bottom: 1px solid rgba(0,0,0,0.25);
+}
+.hero-link:hover { border-bottom-color: #111; }
+.client-link { color: inherit; text-decoration: none; }
+.client-link:hover { text-decoration: underline; }
+
+/* CV column — clipped to photo height, scrollable */
+#hero-col-cv, #hero-col-clients {
+  padding: 10px 11px 13px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  scrollbar-width: none;
+  display: flex;
+  flex-direction: column;
+}
+#hero-col-cv::-webkit-scrollbar,
+#hero-col-clients::-webkit-scrollbar { display: none; }
+
+.cv-block { margin-bottom: 6px; display: grid; grid-template-columns: 90px 1fr; grid-template-rows: auto auto; column-gap: 10px; }
+.cv-year    { font-size: clamp(6.25px, 1.3vw, 12.5px); line-height: 1.4; color: #111; grid-row: 1 / 3; align-self: start; white-space: nowrap; }
+.cv-company { font-size: clamp(6.25px, 1.3vw, 12.5px); line-height: 1.4; color: #111; grid-column: 2; }
+.cv-role    { font-size: clamp(5.5px, 1.14vw, 11px); line-height: 1.4; color: rgba(0,0,0,0.45); grid-column: 2; }
+.cv-text    { font-size: clamp(6.25px, 1.3vw, 12.5px); line-height: 1.5; color: #111; }
+
+/* ─── PROJECTS ─── */
+.project { width: 100%; }
+.project.dark { }
+
+.strip-wrap { width: 100%; display: flex; flex-direction: column; overflow: hidden; padding-top: 10px; }
+.strip {
+  display: flex;
+  align-items: flex-start;
+  will-change: transform;
+  touch-action: pan-y;
+  min-height: 0;
+}
+
+.cell { flex-shrink: 0; cursor: none; overflow: visible; }
+.cell img, .cell video { display: block; width: auto; height: auto; max-height: 440px; }
+.cell.small { display: flex; align-items: center; align-self: center; }
+
+.info {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: baseline;
+  padding: 5px 7px 6px;
+  gap: 0;
+}
+.proj-title { font-size: 15px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding-right: 20px; }
+.proj-date  { font-size: 15px; font-weight: 500; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; text-align: right; }
+.proj-desc  { font-size: 9.5px; line-height: 1.4; pointer-events: none; grid-column: span 2; }
+
+#tag-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag-btn {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  background: none;
+  border: 1px dotted #111;
+  padding: 4px 9px;
+  cursor: none !important;
+  color: #111;
+  letter-spacing: 0.03em;
+}
+.tag-btn:hover, .tag-btn.active {
+  background: rgba(0,0,0,0.08);
+  color: #111;
+}
+
+/* ─── LIGHTBOX ─── */
+#lightbox {
+  position: fixed; inset: 0; z-index: 1000;
+  display: none;
+  align-items: center; justify-content: center;
+  pointer-events: none;
+}
+#lightbox.open { display: flex; }
+#lb-frame { pointer-events: all; }
+#lb-backdrop { display: none; }
+#lb-frame {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: flex-start;
+  pointer-events: all;
+  cursor: none !important;
+  width: auto;
+}
+
+#lb-media {
+  max-width: 88vw; max-height: 100vh;
+  display: flex; align-items: flex-start; justify-content: center;
+}
+#lb-media img,
+#lb-media video { display: block; max-width: 88vw; max-height: calc(100vh - 40px); width: auto; height: auto; }
+#lb-label { margin-top: 8px; display: flex; gap: 10px; align-items: baseline; }
+#lb-title { font-size: 13px; font-weight: 300; color: #111; }
+#lb-desc  { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(0,0,0,0.4); }
+
+</style>
+</head>
+<body>
+
+<div id="cur">
+  <svg viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg">
+    <polygon points="2,2 2,30 9,23 14,34 18,32 13,21 22,21" fill="#111" stroke-linejoin="round"/>
+  </svg>
+</div>
+
+<button id="about-btn">ABOUT</button>
+
+<div id="hero-wrap">
+<section id="hero">
+
+  <div class="hero-col" id="hero-photo">
+    <img src="About.webp" alt="Siri Farup">
+  </div>
+
+  <div class="hero-col large" id="hero-col-bio"></div>
+
+  <div id="hero-col-clients">
+    <p class="cv-text" style="margin-bottom:10px;">Clients and collaborators:</p>
+    <p class="cv-text" style="line-height:1.8;" id="hero-clients-text"></p>
+    <div id="tag-filter" style="margin-top: auto; padding-top: 2em;">
+      <p class="cv-text" style="margin-bottom:6px;">Tags:</p>
+      <div id="tag-list"></div>
+    </div>
+  </div>
+
+  <div id="hero-col-cv"></div>
+
+</section>
+</div>
+
+<div id="projects"></div>
+
+<div id="lightbox">
+  <div id="lb-backdrop"></div>
+  <div id="lb-frame">
+    <div id="lb-media"></div>
+
+  </div>
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+
+// PROJECTS
+// Each entry with a `folder` key loads all media from that folder.
+// Add new projects here — just set the folder path and info.
+
+const PROJECTS = [
+  { title: 'Institut For Text',                    folder: 'Projects/3. Logo/7. Institut For Text' },
+  { title: 'Kulturforfaltningen Mangfoldighed',    folder: 'Projects/6. Editorial Design/1. Kulturforfaltningen Mangfoldighed I Kulturen' },
+  { title: 'X Program', columns: 2,             folder: 'Projects/4. Graphic Design - Identity/10. X Program' },
+  { title: 'Connexió',                             folder: 'Projects/6. Editorial Design/4. Connexió' },
+];
+
+// Shuffle projects on every load
+for (let i = PROJECTS.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [PROJECTS[i], PROJECTS[j]] = [PROJECTS[j], PROJECTS[i]];
+}
+
+const BASE_SPEED  = 0.18;
+const SPEEDS = { slow: 0.05, medium: 0.09, fast: 0.18 };
+
+// HELPERS
+
+async function readText(url) {
+  try {
+    const res = await fetch(url);
+    return res.ok ? await res.text() : null;
+  } catch { return null; }
+}
+
+function generateFiles(count) {
+  const exts = ['webp','png','jpg','jpeg','gif','avif','svg','mp4','mov','webm'];
+  const files = [];
+  for (let i = 1; i <= count; i++) {
+    for (const ext of exts) {
+      files.push(`${i}.${ext}`);
+    }
+  }
+  return files;
+}
+
+// Track which numbers have already loaded so we hide duplicates
+const loadedNumbers = new WeakMap();
+
+function parseInfo(text) {
+  const info = {};
+  if (!text) return info;
+  for (const line of text.split('\n')) {
+    if (line.trim().toLowerCase().startsWith('tags available')) break; // stop here
+    const colon = line.indexOf(':');
+    if (colon < 0) continue;
+    const key = line.slice(0, colon).trim().toLowerCase();
+    const val = line.slice(colon + 1).trim();
+    info[key] = val;
+  }
+  return info;
+}
+
+function mediaKind(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  if (['jpg','jpeg','png','gif','webp','avif','svg'].includes(ext)) return 'img';
+  if (['mp4','mov','webm'].includes(ext)) return 'video';
+  return null;
+}
+
+
+// BUILD DOM
+
+const container   = document.getElementById('projects');
+const stripEls    = [];
+const stripStates = [];
+
+function makeMediaEl(kind, src, autoplay, controls) {
+  if (kind === 'img') {
+    const el = document.createElement('img');
+    el.src = src;
+    return el;
+  }
+  const el = document.createElement('video');
+  el.src = src; el.muted = true; el.loop = true; el.playsInline = true;
+  el.autoplay = autoplay; el.controls = controls;
+  el.addEventListener('error', () => {
+    if (el.parentElement) el.parentElement.style.display = 'none';
+  });
+  return el;
+}
+
+function buildProject(proj, index) {
+  const numRows = proj.columns || 1;
+  const maxH    = proj.height ? parseInt(proj.height) : null;
+  const gap     = proj.gap !== undefined ? parseInt(proj.gap) : 3;
+  const count   = proj.count || 30;
+
+  const section = document.createElement('div');
+  section.className = 'project';
+  if (proj.tags) section.dataset.tags = proj.tags.toLowerCase();
+  section.style.background = proj.bg;
+  if (proj.space !== undefined) section.style.paddingBottom = proj.space + 'px';
+  section.style.display = 'none';
+  let revealed = false;
+  function revealSection() {
+    if (!revealed) { revealed = true; section.style.display = ''; }
+  }
+  setTimeout(revealSection, 3000);
+
+  const wrap = document.createElement('div');
+  wrap.className = 'strip-wrap';
+
+  // Build numRows strips. Row 0 gets files 1..half, row 1 gets half+1..count
+  const half = Math.ceil(count / 2);
+  const rowRanges = numRows > 1
+    ? [[1, half], [half + 1, count]]
+    : [[1, count]];
+
+  const exts = ['webp','png','jpg','jpeg','gif','avif','svg','mp4','mov','webm'];
+
+  const rowEls = rowRanges.map(([from, to], ri) => {
+    const row = document.createElement('div');
+    row.className = 'strip';
+    row.style.gap = gap + 'px';
+    row.style.paddingTop = ri === 0 ? '0' : gap + 'px';
+
+    for (let n = from; n <= to; n++) {
+      const num = String(n);
+      const isSmall = proj.smallNums && proj.smallNums.has(num);
+      const cell = document.createElement('div');
+      cell.className = isSmall ? 'cell small' : 'cell';
+      cell.style.flexShrink = '0';
+      cell.style.width = 'auto';
+      cell.style.height = 'auto';
+
+      // Try each extension in order, first one that loads wins
+      const candidates = exts.map(e => `${n}.${e}`);
+      let tried = 0;
+
+      function tryNext() {
+        if (tried >= candidates.length) { cell.style.display = 'none'; return; }
+        const filename = candidates[tried++];
+        const kind = mediaKind(filename);
+        const src = proj.folder + '/' + filename;
+        cell.innerHTML = '';
+        const el = makeMediaEl(kind, src, true, false);
+        const h = isSmall ? 100 : maxH;
+        if (h) { el.style.maxHeight = h + 'px'; el.style.height = 'auto'; el.style.width = 'auto'; el.style.maxWidth = 'none'; }
+        el.addEventListener('error', tryNext);
+        el.addEventListener('load', () => { revealSection(); scheduleSync(); });
+        el.addEventListener('loadedmetadata', () => { revealSection(); scheduleSync(); });
+        cell.appendChild(el);
+        cell._currentSrc = src;
+        cell._currentKind = kind;
+      }
+      tryNext();
+      cell.addEventListener('click', (e) => { e.stopPropagation(); openLightbox({ kind: cell._currentKind, src: cell._currentSrc }, proj); });
+      row.appendChild(cell);
+    }
+
+    wrap.appendChild(row);
+    return row;
+  });
+
+  // After rows are visible, scale the shorter row up so both end at the same point
+  let syncTimer = null;
+  function scheduleSync() {
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(syncRows, 200);
+  }
+  function syncRows() {
+    if (rowEls.length < 2) return;
+    if (section.style.display === 'none') { setTimeout(syncRows, 100); return; }
+    const w0 = rowEls[0].scrollWidth;
+    const w1 = rowEls[1].scrollWidth;
+    if (w0 < 10 || w1 < 10) { setTimeout(syncRows, 100); return; }
+    const shorter = w0 < w1 ? rowEls[0] : rowEls[1];
+    const ratio   = Math.max(w0, w1) / Math.min(w0, w1);
+    const firstEl = shorter.querySelector('img, video');
+    if (!firstEl || !firstEl.offsetHeight) { setTimeout(syncRows, 100); return; }
+    const newH = Math.round(firstEl.offsetHeight * ratio);
+    shorter.querySelectorAll('img, video').forEach(el => {
+      el.style.height = newH + 'px';
+      el.style.width = 'auto';
+      el.style.maxHeight = 'none';
+      if (el.parentElement) el.parentElement.style.height = newH + 'px';
+    });
+  }
+
+  section.appendChild(wrap);
+
+  const textC = proj.textColor || '#111';
+  const info  = document.createElement('div');
+  info.className = 'info';
+  info.style.color = textC;
+  info.innerHTML = `
+    <span class="proj-title">${proj.title}</span>
+    <span class="proj-desc">${proj.description || ''}</span>
+    <span class="proj-date">${proj.date || ''}</span>`;
+  section.appendChild(info);
+  container.appendChild(section);
+
+  rowEls.forEach((row, ri) => {
+    stripEls.push(row);
+    stripStates.push({ pos: 0, dir: 1, syncGroup: section, speed: proj.speed || BASE_SPEED });
+  });
+
+  wrap.addEventListener('wheel', e => {
+    if (Math.abs(e.deltaX) > 1) {
+      e.preventDefault();
+      const maxPos = rowEls[0].scrollWidth - wrap.offsetWidth;
+      const idx = stripEls.indexOf(rowEls[0]);
+      const s = stripStates[idx];
+      s.pos = Math.max(0, Math.min(maxPos, s.pos + e.deltaX));
+      rowEls.forEach((row, ri) => {
+        if (ri === 0) return;
+        const si = stripEls.indexOf(row);
+        stripStates[si].pos = s.pos;
+      });
+    }
+  }, { passive: false });
+}
+
+
+// LIGHTBOX
+
+const lightbox = document.getElementById('lightbox');
+const lbMedia  = document.getElementById('lb-media');
+let lbOpen = false;
+
+function openLightbox({ kind, src }, proj) {
+  lbMedia.innerHTML = '';
+  lbMedia.appendChild(makeMediaEl(kind, src, true, false));
+  lightbox.classList.add('open');
+  lbOpen = true;
+}
+function closeLightbox() {
+  lightbox.classList.remove('open');
+  lbMedia.innerHTML = '';
+  lbOpen = false;
+}
+document.getElementById('lb-frame').addEventListener('click', closeLightbox);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && lbOpen) closeLightbox(); });
+
+
+// ABOUT TOGGLE
+document.getElementById('about-btn').addEventListener('click', () => {
+  document.getElementById('hero-wrap').classList.toggle('open');
+});
+
+// CURSOR
+
+const cur = document.getElementById('cur');
+document.addEventListener('mousemove', e => {
+  cur.style.left = e.clientX + 'px';
+  cur.style.top  = e.clientY + 'px';
+});
+
+
+// CV HEIGHT — matches photo column, expands on hover
+
+const cvCol      = document.getElementById('hero-col-cv');
+const clientsCol = document.getElementById('hero-col-clients');
+const bioCol     = document.getElementById('hero-col-bio');
+const photoEl    = document.getElementById('hero-photo');
+
+// Load about.txt and populate the about section
+(async () => {
+  const text = await readText('about.txt');
+  if (!text) return;
+  const lines = text.split('\n');
+  let inClients = false;
+  const clientParts = [];
+  lines.forEach(line => {
+    const colon = line.indexOf(':');
+    // Only treat as a key:value if the part before the colon is a single short word
+    const potentialKey = colon >= 0 ? line.slice(0, colon).trim().toLowerCase() : '';
+    const isKey = potentialKey && /^[a-z]+$/.test(potentialKey);
+    const key = isKey ? potentialKey : '';
+    const val = isKey ? line.slice(colon + 1).trim() : line.trim();
+
+    if (key && key !== 'clients') inClients = false;
+
+    if (key === 'bio') {
+      const p = document.createElement('p');
+      p.className = 'hero-body';
+      p.textContent = val;
+      bioCol.appendChild(p);
+    } else if (key === 'email') {
+      const p = document.createElement('p');
+      p.className = 'hero-body';
+      p.innerHTML = `<a href="mailto:${val}" class="hero-link">${val}</a>`;
+      bioCol.appendChild(p);
+    } else if (key === 'clients') {
+      // Start collecting client lines
+      inClients = true;
+    } else if (inClients) {
+      if (val === '' && key === '') return; // skip blank
+      // Each client line: "Name | url" or just "Name"
+      const parts = line.split('|').map(s => s.trim());
+      const name = parts[0];
+      const url  = parts[1] || null;
+      if (!name) return;
+      clientParts.push({ name, url });
+    } else if (key === 'cv') {
+      const parts = val.split('|').map(s => s.trim());
+      const year = parts[0] || '';
+      const company = parts[1] || '';
+      const role = parts[2] || '';
+      const block = document.createElement('div');
+      block.className = 'cv-block';
+      block.innerHTML = `<p class="cv-year">${year}</p><p class="cv-company">${company}</p><p class="cv-role">${role}</p>`;
+      cvCol.appendChild(block);
+    }
+  });
+
+  // Render clients
+  if (clientParts.length) {
+    const container = document.getElementById('hero-clients-text');
+    container.innerHTML = clientParts.map(({ name, url }, i) => {
+      const comma = i < clientParts.length - 1 ? ', ' : '.';
+      if (url) return `<a href="${url}" target="_blank" class="client-link">${name}</a>${comma}`;
+      return `<span>${name}</span>${comma}`;
+    }).join('');
+  }
+
+  syncCVHeight();
+})();
+
+function syncCVHeight() {
+  const h = photoEl.getBoundingClientRect().height;
+  if (h > 0) {
+    cvCol.style.maxHeight      = h + 'px';
+    clientsCol.style.maxHeight = h + 'px';
+    clientsCol.style.height    = h + 'px';
+    bioCol.style.maxHeight     = h + 'px';
+    bioCol.style.height        = h + 'px';
+  }
+}
+const photoImg = photoEl.querySelector('img');
+photoImg.complete ? syncCVHeight() : photoImg.addEventListener('load', syncCVHeight);
+window.addEventListener('resize', syncCVHeight);
+// Hover expand/collapse handled by CSS :hover rule above
+
+
+// ANIMATION LOOP
+
+function startLoop() {
+  function tick() {
+    const seen = new Set();
+    stripEls.forEach((strip, i) => {
+      const s = stripStates[i];
+      const group = s.syncGroup;
+
+      // If this strip belongs to a sync group, only drive the first one
+      if (group) {
+        const firstIdx = stripEls.findIndex(el => stripStates[stripEls.indexOf(el)].syncGroup === group);
+        if (i !== firstIdx) {
+          // mirror pos from first
+          strip.style.transform = `translateX(${-stripStates[firstIdx].pos}px)`;
+          return;
+        }
+      }
+
+      const maxPos = strip.scrollWidth - strip.parentElement.offsetWidth;
+      s.pos += s.speed * s.dir;
+      if (s.pos >= maxPos) { s.pos = maxPos; s.dir = -1; }
+      if (s.pos <= 0)      { s.pos = 0;      s.dir =  1; }
+      strip.style.transform = `translateX(${-s.pos}px)`;
+    });
+    requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+
+// INIT
+const BG_CYCLE   = ['#f0ede8','#e8e4dc','#d6d3cc','#e4ddd4','#0d0d0d','#14121f','#1a1612'];
+const DARK_CYCLE = [false, false, false, false, true, true, true];
+
+(async () => {
+  for (let i = 0; i < PROJECTS.length; i++) {
+    const proj = PROJECTS[i];
+    proj.bg   = proj.bg   || BG_CYCLE[i % BG_CYCLE.length];
+    proj.textColor = proj.textColor || '#111';
+    const text = await readText(proj.folder + '/info.txt');
+    const info = parseInfo(text);
+    if (info.title)    proj.title    = info.title;
+    if (info.type)     proj.type     = info.type;
+    if (info.tags)     proj.tags     = info.tags;
+    if (info.date)     proj.date     = info.date;
+    if (info.color)    proj.bg = info.color;
+    else               proj.bg = '#f0ede8';
+    if (info.filename) proj.filename = info.filename;
+    if (info.text) proj.textColor = info.text.trim().toLowerCase() === 'white' ? 'rgba(255,255,255,0.8)' : '#111';
+    if (info.columns)  proj.columns  = parseInt(info.columns);
+    if (info.count)    proj.count    = parseInt(info.count);
+    if (info.height)   proj.height   = parseInt(info.height);
+    if (info.gap !== undefined) proj.gap = parseInt(info.gap);
+    if (info.smallnums) proj.smallNums = new Set(info.smallnums.split(',').map(s => s.trim()));
+    if (info.space !== undefined) proj.space = parseInt(info.space);
+    if (info.speed) proj.speed = SPEEDS[info.speed.trim().toLowerCase()] || BASE_SPEED;
+    if (info.describtion) proj.description = info.describtion;
+    buildProject(proj, i);
+  }
+  startLoop();
+
+  // Build tag list from all projects
+  const allTags = new Set();
+  PROJECTS.forEach(p => { if (p.tags) p.tags.split(',').forEach(t => allTags.add(t.trim().toLowerCase())); });
+
+  const tagList = document.getElementById('tag-list');
+  let activeTag = null;
+
+  allTags.forEach(tag => {
+    const btn = document.createElement('button');
+    btn.className = 'tag-btn';
+    btn.textContent = tag;
+    btn.addEventListener('click', () => {
+      if (activeTag === tag) {
+        // Deselect — show all
+        activeTag = null;
+        document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.project').forEach(el => el.style.display = '');
+      } else {
+        activeTag = tag;
+        document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.project').forEach(el => {
+          const projTags = el.dataset.tags || '';
+          el.style.display = projTags.includes(tag) ? '' : 'none';
+        });
+      }
+    });
+    tagList.appendChild(btn);
+  });
+})();
+</script>
+</body>
+</html>
